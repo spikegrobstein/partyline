@@ -65,6 +65,10 @@ async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream
     let (mut sink, mut stream) = framed_stream.split();
     let sender = tx.clone();
 
+    sender.send("Welcome to the partyline!".to_owned()).await.unwrap();
+    sender.send("Use /name to change your name.".to_owned()).await.unwrap();
+    sender.send(format!("You are: anonymous[{user_id}]")).await.unwrap();
+
     tokio::spawn(async move {
         loop {
             match rx.recv().await {
