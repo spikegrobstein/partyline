@@ -2,6 +2,7 @@ use std::io;
 use std::sync::Arc;
 use std::net::SocketAddr;
 
+use tokio::sync::mpsc::channel;
 use tokio::sync::Mutex;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
@@ -13,6 +14,7 @@ use futures::{StreamExt, SinkExt};
 use crate::server::UserRegistry;
 use crate::server::User;
 use crate::server::CmdCodec;
+use crate::server::cmd_codec::Packet;
 
 pub struct Server {
     pub users: Arc<Mutex<UserRegistry>>,
@@ -39,6 +41,9 @@ impl Server {
 async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream, addr: SocketAddr) {
     println!("got connection from {addr}");
 
+    let (tx, mut rx) = channel::<String>(32);
+    let sender = tx.clone();
+
     let user_id = {
         let mut registry = registry.lock().await;
 
@@ -48,6 +53,7 @@ async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream
             id,
             name: "anonymous".to_owned(),
             addr,
+            sender,
         };
 
         registry.users.push(new_user);
@@ -55,14 +61,52 @@ async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream
         id
     };
 
-    let mut framed_stream = Framed::new(socket, CmdCodec);
+    let framed_stream = Framed::new(socket, CmdCodec);
+    let (mut sink, mut stream) = framed_stream.split();
+    let sender = tx.clone();
+
+    tokio::spawn(async move {
+        loop {
+            match rx.recv().await {
+                Some(msg) => {
+                    if let Err(err) = sink.send(msg).await {
+                        eprintln!("Failed to send: {:#?}", err);
+                    }
+                },
+                None => {
+                    eprintln!("ending recv loop.");
+                    break;
+                }
+            }
+        }
+    });
 
     loop {
-        match framed_stream.next().await {
+        match stream.next().await {
             Some(Err(err)) => {
                 eprintln!("got an error... ignoring... {:#?}", err);
             },
-            Some(Ok(cmd)) => {
+            Some(Ok(Packet::Chat(chatstring))) => {
+                eprintln!("got a chat string");
+                let (username, senders) = {
+                    let reg = registry.lock().await;
+
+                    let user = reg.get_user(user_id).unwrap();
+                    let username = user.name.clone();
+
+                    (username, reg.get_senders())
+                };
+
+                let chatline = format!("<{}> {}", username, chatstring);
+                for (user_id, username, tx) in senders {
+                    if tx.send(chatline.clone()).await.is_err() {
+                        eprintln!("Failed to send chat to {user_id}");
+                    } else {
+                        eprintln!("sent chat to {username}");
+                    }
+                }
+            },
+            Some(Ok(Packet::Command(cmd))) => {
                 println!("got cmd: {}", cmd.command);
                 let resp = match cmd.command.as_ref() {
                     "echo" => {
@@ -100,7 +144,7 @@ async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream
                         format!(">> Unknown command {unknown}")
                     }
                 };
-                framed_stream.send(&resp).await.unwrap();
+                sender.send(resp).await.unwrap();
             },
             None => {
                 eprintln!("user disconnected?");
