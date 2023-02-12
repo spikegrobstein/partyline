@@ -57,6 +57,10 @@ impl Decoder for CmdCodec {
 
         let line = read_line(src).ok_or(CodecError::ReadLineError)?;
 
+        if line.is_empty() {
+            return Ok(None);
+        }
+
         let packet = if line.starts_with("/") {
             // treat it as a command
             let (_, cmd) = parser::parse_command(&line).map_err(|_| CodecError::ParseError)?;

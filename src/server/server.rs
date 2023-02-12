@@ -51,7 +51,7 @@ async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream
 
         let new_user = User {
             id,
-            name: "anonymous".to_owned(),
+            name: format!("anonymous[{id}]"),
             addr,
             sender,
         };
@@ -134,7 +134,9 @@ async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream
                             let mut reg = registry.lock().await;
                             let user: &mut User = reg.get_user_mut(user_id).unwrap();
 
+                            let old_name = user.name.clone();
                             user.name = new_name.clone();
+                            reg.broadcast(format!("User renamed {old_name} -> {new_name}")).await.unwrap();
                             format!("Changed name to {new_name}")
                         } else {
                             format!("Usage: name <new-name>")
