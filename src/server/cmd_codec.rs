@@ -1,6 +1,8 @@
 use tokio_util::codec::{Decoder, Encoder};
-use bytes::{BufMut, BytesMut};
+use bytes::{Buf, BufMut, BytesMut};
 use thiserror::Error;
+
+use nom::character::{is_newline, is_space};
 
 use std::str;
 use std::io;
@@ -13,8 +15,11 @@ pub enum CodecError {
     #[error("I/O Error")]
     IoError(#[from] io::Error),
 
+    #[error("UTF8 error")]
+    Utf8Error(#[from] str::Utf8Error),
+
     #[error("Parse error")]
-    ParseError(#[from] str::Utf8Error)
+    ParseError,
 }
 
 pub struct CmdCodec;
@@ -25,8 +30,24 @@ impl Decoder for CmdCodec {
     type Error = CodecError;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        let line = str::from_utf8(&src[..]).map_err(CodecError::ParseError)?;
-        let (_input, command) = parser::parse_command(line).unwrap();
+        // ignore newlines and whitespace
+        while ! src.is_empty() && (is_space(src[0]) || is_newline(src[0])) {
+            src.advance(1);
+        }
+
+        // if there's nothing in the buffer, we got nothing.
+        if src.is_empty() {
+            return Ok(None);
+        }
+
+        // try to parse the line.
+        let len = src.len();
+        let line = str::from_utf8(&src[..])?;
+        let (remaining, command) = parser::parse_command(line).map_err(|_| CodecError::ParseError)?;
+
+        let advance_count = len - remaining.len();
+        dbg!("Advancing", advance_count);
+        src.advance(advance_count);
 
         Ok(Some(command))
     }

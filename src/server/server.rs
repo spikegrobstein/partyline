@@ -53,25 +53,34 @@ async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream
 
     let mut framed_stream = Framed::new(socket, CmdCodec);
 
-    let next_cmd = framed_stream.next().await.unwrap();
-    if let Ok(cmd) = next_cmd {
-        println!("got cmd: {}", cmd.command);
-        let resp = match cmd.command.as_ref() {
-            "echo" => {
-                if cmd.args.is_empty() {
-                    ">> Expected args".to_owned()
-                } else {
-                    cmd.args.join(" ")
-                }
+    loop {
+        match framed_stream.next().await {
+            Some(Err(err)) => {
+                eprintln!("got an error... ignoring... {:#?}", err);
             },
-            "news" => {
-                "no news.".to_owned()
+            Some(Ok(cmd)) => {
+                println!("got cmd: {}", cmd.command);
+                let resp = match cmd.command.as_ref() {
+                    "echo" => {
+                        if cmd.args.is_empty() {
+                            ">> Expected args".to_owned()
+                        } else {
+                            cmd.args.join(" ")
+                        }
+                    },
+                    "news" => {
+                        "no news.".to_owned()
+                    },
+                    unknown => {
+                        format!(">> Unknown command {unknown}")
+                    }
+                };
+                framed_stream.send(&resp).await.unwrap();
             },
-            unknown => {
-                format!(">> Unknown command {unknown}")
-            }
-        };
-        framed_stream.send(&resp).await.unwrap();
+            None => {
+                eprintln!("got nothin'");
+            },
+        }
     }
 }
 
