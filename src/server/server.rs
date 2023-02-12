@@ -39,17 +39,21 @@ impl Server {
 async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream, addr: SocketAddr) {
     println!("got connection from {addr}");
 
-    {
+    let user_id = {
         let mut registry = registry.lock().await;
 
+        let id = registry.next_id();
+
         let new_user = User {
-            id: registry.next_id(),
+            id,
             name: "anonymous".to_owned(),
             addr,
         };
 
         registry.users.push(new_user);
-    }
+
+        id
+    };
 
     let mut framed_stream = Framed::new(socket, CmdCodec);
 
@@ -71,6 +75,27 @@ async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream
                     "news" => {
                         "no news.".to_owned()
                     },
+                    "who" => {
+                        {
+                            let users = registry.lock().await;
+
+                            let user = users.get_user(user_id).unwrap();
+
+                            let count = users.users.len();
+                            format!("You are {}.\nthere are {} users online, including you.", user.name, count)
+                        }
+                    },
+                    "name" => {
+                        if let Some(new_name) = cmd.args.get(0) {
+                            let mut reg = registry.lock().await;
+                            let user: &mut User = reg.get_user_mut(user_id).unwrap();
+
+                            user.name = new_name.clone();
+                            format!("Changed name to {new_name}")
+                        } else {
+                            format!("Usage: name <new-name>")
+                        }
+                    },
                     unknown => {
                         format!(">> Unknown command {unknown}")
                     }
@@ -78,7 +103,12 @@ async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream
                 framed_stream.send(&resp).await.unwrap();
             },
             None => {
-                eprintln!("got nothin'");
+                eprintln!("user disconnected?");
+                {
+                    let mut reg = registry.lock().await;
+                    reg.remove_user(user_id);
+                }
+                break;
             },
         }
     }
