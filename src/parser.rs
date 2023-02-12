@@ -4,6 +4,8 @@ use nom::{
     bytes::complete::tag,
     character::complete::alphanumeric1,
     character::complete::multispace1,
+    character::complete::newline,
+    multi::many0,
     multi::separated_list0,
     combinator::opt,
 };
@@ -52,6 +54,9 @@ pub fn parse_command(input: &str) -> IResult<&str, Command> {
     dbg!(input);
     let (input, args) = parse_args(input)?;
     dbg!(input);
+
+    // ignore newlines
+    let (input, _) = many0(newline)(input)?;
 
 
     Ok((input, Command {
