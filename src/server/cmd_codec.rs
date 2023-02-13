@@ -2,7 +2,7 @@ use tokio_util::codec::{Decoder, Encoder};
 use bytes::{Buf, BufMut, BytesMut};
 use thiserror::Error;
 
-use nom::character::{is_newline, is_space};
+use nom::character::is_newline;
 
 use std::str;
 use std::io;
@@ -33,12 +33,12 @@ pub enum Packet {
 
 pub struct CmdCodec;
 
-fn read_line<'a>(src: &'a mut BytesMut) -> Option<String> {
+fn read_line(src: &mut BytesMut) -> Option<String> {
     let len = src.iter().position(|c| is_newline(*c))?;
 
     let slice = &src[..len];
 
-    let s = str::from_utf8(&slice).unwrap().to_owned();
+    let s = str::from_utf8(slice).unwrap().to_owned();
     src.advance(len + 1);
 
     Some(s)
@@ -61,7 +61,7 @@ impl Decoder for CmdCodec {
             return Ok(None);
         }
 
-        let packet = if line.starts_with("/") {
+        let packet = if line.starts_with('/') {
             // treat it as a command
             let (_, cmd) = parser::parse_command(&line).map_err(|_| CodecError::ParseError)?;
 

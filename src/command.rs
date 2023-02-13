@@ -12,8 +12,3 @@ pub struct Command {
     pub args: Vec<String>,
 }
 
-impl Command {
-    pub fn to_string(&self) -> String {
-        format!("{:#?}", self)
-    }
-}

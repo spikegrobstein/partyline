@@ -175,7 +175,7 @@ impl Server {
                                 self.broadcast(format!("User renamed {old_name} -> {new_name}")).await.unwrap();
                                 format!("Changed name to {new_name}")
                             } else {
-                                format!("Usage: name <new-name>")
+                                "Usage: name <new-name>".to_owned()
                             }
                         },
                         unknown => {
