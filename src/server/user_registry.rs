@@ -1,5 +1,4 @@
 use tokio::sync::mpsc::Sender;
-use tokio::sync::mpsc::error::SendError;
 use crate::server::User;
 
 #[derive(Default)]
@@ -35,15 +34,6 @@ impl UserRegistry {
             .collect()
     }
 
-    pub async fn broadcast(&self, msg: String) -> Result<(), SendError<String>> {
-        let msg = format!(">> {msg}");
-
-        for (_user_id, _, sender) in self.get_senders() {
-            sender.send(msg.clone()).await?;
-        }
-
-        Ok(())
-    }
     // pub async fn send_chat(&self, id: u32, chat: &str) {
         // let name = {
             // &self.get_user(id).unwrap().name

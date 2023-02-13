@@ -8,6 +8,7 @@ use tokio::sync::Mutex;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 use tokio::fs;
+use tokio::sync::mpsc::error::SendError;
 
 use tokio_util::codec::Framed;
 
@@ -52,6 +53,21 @@ impl Server {
 
     pub async fn welcome_message(&self) -> Option<String> {
         fs::read_to_string(WELCOME_FILE).await.ok()
+    }
+
+    pub async fn broadcast(&self, msg: String) -> Result<(), SendError<String>> {
+        let msg = format!(">> {msg}");
+
+        let senders = {
+            let reg = self.registry.lock().await;
+            reg.get_senders()
+        };
+
+        for (_user_id, _, sender) in senders {
+            sender.send(msg.clone()).await?;
+        }
+
+        Ok(())
     }
 
     async fn handle_connection(&self, socket: TcpStream, addr: SocketAddr) {
@@ -158,7 +174,7 @@ impl Server {
 
                                 let old_name = user.name.clone();
                                 user.name = new_name.clone();
-                                reg.broadcast(format!("User renamed {old_name} -> {new_name}")).await.unwrap();
+                                self.broadcast(format!("User renamed {old_name} -> {new_name}")).await.unwrap();
                                 format!("Changed name to {new_name}")
                             } else {
                                 format!("Usage: name <new-name>")
