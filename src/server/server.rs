@@ -1,6 +1,7 @@
 use std::io;
 use std::sync::Arc;
 use std::net::SocketAddr;
+use std::env;
 
 use tokio::sync::mpsc::channel;
 use tokio::sync::Mutex;
@@ -22,7 +23,8 @@ pub struct Server {
 
 impl Server {
     pub async fn listen(&self) -> io::Result<()> {
-        let addr = "127.0.0.1:9999";
+        let addr = env::var("BIND_ADDR")
+            .unwrap_or_else(|_| { "127.0.0.1:9999".to_owned() });
         let listener = TcpListener::bind(addr).await?;
 
         loop {
