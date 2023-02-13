@@ -21,10 +21,21 @@ use crate::server::cmd_codec::Packet;
 const WELCOME_FILE: &str = "welcome.txt";
 
 pub struct Server {
-    pub users: Arc<Mutex<UserRegistry>>,
+    pub registry: Arc<Mutex<UserRegistry>>,
 }
 
 impl Server {
+    pub fn new() -> Self {
+        let registry = UserRegistry {
+            counter: 0,
+            users: vec![],
+        };
+
+        Self {
+            registry: Arc::new(Mutex::new(registry)),
+        }
+    }
+
     pub async fn listen(&self) -> io::Result<()> {
         let addr = env::var("BIND_ADDR")
             .unwrap_or_else(|_| { "127.0.0.1:9999".to_owned() });
@@ -33,7 +44,7 @@ impl Server {
         loop {
             let (socket, addr) = listener.accept().await?;
 
-            let registry = self.users.clone();
+            let registry = self.registry.clone();
 
             tokio::spawn(async move {
                 handle_connection(registry, socket, addr).await;
