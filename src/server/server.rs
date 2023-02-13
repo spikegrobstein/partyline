@@ -26,10 +26,7 @@ pub struct Server {
 
 impl Server {
     pub fn new() -> Self {
-        let registry = UserRegistry {
-            counter: 0,
-            users: vec![],
-        };
+        let registry = UserRegistry::default();
 
         Self {
             registry: Arc::new(Mutex::new(registry)),

@@ -2,6 +2,7 @@ use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::error::SendError;
 use crate::server::User;
 
+#[derive(Default)]
 pub struct UserRegistry {
     pub counter: u32,
     pub users: Vec<User>,
