@@ -7,6 +7,7 @@ use tokio::sync::mpsc::channel;
 use tokio::sync::Mutex;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
+use tokio::fs;
 
 use tokio_util::codec::Framed;
 
@@ -16,6 +17,8 @@ use crate::server::UserRegistry;
 use crate::server::User;
 use crate::server::CmdCodec;
 use crate::server::cmd_codec::Packet;
+
+const WELCOME_FILE: &str = "welcome.txt";
 
 pub struct Server {
     pub users: Arc<Mutex<UserRegistry>>,
@@ -37,7 +40,10 @@ impl Server {
             });
         }
     }
+}
 
+pub async fn welcome_message() -> Option<String> {
+    fs::read_to_string(WELCOME_FILE).await.ok()
 }
 
 async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream, addr: SocketAddr) {
@@ -67,9 +73,9 @@ async fn handle_connection(registry: Arc<Mutex<UserRegistry>>, socket: TcpStream
     let (mut sink, mut stream) = framed_stream.split();
     let sender = tx.clone();
 
-    sender.send("Welcome to the partyline!".to_owned()).await.unwrap();
-    sender.send("Use /name to change your name.".to_owned()).await.unwrap();
-    sender.send(format!("You are: anonymous[{user_id}]")).await.unwrap();
+    if let Some(msg) = welcome_message().await {
+        sender.send(msg).await.unwrap();
+    }
 
     tokio::spawn(async move {
         loop {
