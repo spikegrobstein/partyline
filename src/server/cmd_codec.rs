@@ -1,14 +1,14 @@
-use tokio_util::codec::{Decoder, Encoder};
 use bytes::{Buf, BufMut, BytesMut};
 use thiserror::Error;
+use tokio_util::codec::{Decoder, Encoder};
 
 use nom::character::is_newline;
 
-use std::str;
 use std::io;
+use std::str;
 
-use crate::parser;
 use crate::command::Command;
+use crate::parser;
 
 #[derive(Error, Debug)]
 pub enum CodecError {
@@ -84,4 +84,3 @@ impl Encoder<String> for CmdCodec {
         Ok(())
     }
 }
-

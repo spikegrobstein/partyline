@@ -7,5 +7,3 @@ pub struct User {
     pub addr: SocketAddr,
     pub sender: Sender<String>,
 }
-
-

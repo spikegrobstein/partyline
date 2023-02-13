@@ -1,5 +1,5 @@
-use tokio::sync::mpsc::Sender;
 use crate::server::User;
+use tokio::sync::mpsc::Sender;
 
 #[derive(Default)]
 pub struct UserRegistry {
@@ -28,21 +28,17 @@ impl UserRegistry {
     pub fn get_senders(&self) -> Vec<(u32, String, Sender<String>)> {
         self.users
             .iter()
-            .map(|u| {
-                (u.id, u.name.clone(), u.sender.clone())
-            })
+            .map(|u| (u.id, u.name.clone(), u.sender.clone()))
             .collect()
     }
 
     // pub async fn send_chat(&self, id: u32, chat: &str) {
-        // let name = {
-            // &self.get_user(id).unwrap().name
-        // };
+    // let name = {
+    // &self.get_user(id).unwrap().name
+    // };
 
-        // for user in &self.users {
+    // for user in &self.users {
 
-        // }
+    // }
     // }
 }
-
-

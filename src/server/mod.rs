@@ -1,26 +1,26 @@
+pub mod cmd_codec;
 pub mod user;
 pub mod user_registry;
-pub mod cmd_codec;
 
+pub use cmd_codec::CmdCodec;
 pub use user::User;
 pub use user_registry::UserRegistry;
-pub use cmd_codec::CmdCodec;
 
-use std::io;
-use std::sync::Arc;
-use std::net::SocketAddr;
 use std::env;
+use std::io;
+use std::net::SocketAddr;
+use std::sync::Arc;
 
-use tokio::sync::mpsc::channel;
-use tokio::sync::Mutex;
+use tokio::fs;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
-use tokio::fs;
+use tokio::sync::mpsc::channel;
 use tokio::sync::mpsc::error::SendError;
+use tokio::sync::Mutex;
 
 use tokio_util::codec::Framed;
 
-use futures::{StreamExt, SinkExt};
+use futures::{SinkExt, StreamExt};
 
 use crate::server::cmd_codec::Packet;
 
@@ -40,8 +40,7 @@ impl Server {
     }
 
     pub async fn listen(self: Arc<Self>) -> io::Result<()> {
-        let addr = env::var("BIND_ADDR")
-            .unwrap_or_else(|_| { "127.0.0.1:9999".to_owned() });
+        let addr = env::var("BIND_ADDR").unwrap_or_else(|_| "127.0.0.1:9999".to_owned());
         let listener = TcpListener::bind(addr).await?;
 
         loop {
@@ -114,7 +113,7 @@ impl Server {
                         if let Err(err) = sink.send(msg).await {
                             eprintln!("Failed to send: {:#?}", err);
                         }
-                    },
+                    }
                     None => {
                         eprintln!("ending recv loop.");
                         break;
@@ -128,7 +127,7 @@ impl Server {
             match stream.next().await {
                 Some(Err(err)) => {
                     eprintln!("got an error... ignoring... {:#?}", err);
-                },
+                }
                 Some(Ok(Packet::Chat(chatstring))) => {
                     eprintln!("got a chat string");
                     let (username, senders) = {
@@ -148,7 +147,7 @@ impl Server {
                             eprintln!("sent chat to {username}");
                         }
                     }
-                },
+                }
                 Some(Ok(Packet::Command(cmd))) => {
                     println!("got cmd: {}", cmd.command);
                     let resp = match cmd.command.as_ref() {
@@ -158,18 +157,19 @@ impl Server {
                             } else {
                                 cmd.args.join(" ")
                             }
-                        },
-                        "news" => {
-                            "no news.".to_owned()
-                        },
+                        }
+                        "news" => "no news.".to_owned(),
                         "who" => {
                             let users = self.registry.lock().await;
 
                             let user = users.get_user(user_id).unwrap();
 
                             let count = users.users.len();
-                            format!("You are {}.\nthere are {} users online, including you.", user.name, count)
-                        },
+                            format!(
+                                "You are {}.\nthere are {} users online, including you.",
+                                user.name, count
+                            )
+                        }
                         "name" => {
                             if let Some(new_name) = cmd.args.get(0) {
                                 let mut reg = self.registry.lock().await;
@@ -177,24 +177,26 @@ impl Server {
 
                                 let old_name = user.name.clone();
                                 user.name = new_name.clone();
-                                self.broadcast(format!("User renamed {old_name} -> {new_name}")).await.unwrap();
+                                self.broadcast(format!("User renamed {old_name} -> {new_name}"))
+                                    .await
+                                    .unwrap();
                                 format!("Changed name to {new_name}")
                             } else {
                                 "Usage: name <new-name>".to_owned()
                             }
-                        },
+                        }
                         unknown => {
                             format!(">> Unknown command {unknown}")
                         }
                     };
                     sender.send(resp).await.unwrap();
-                },
+                }
                 None => {
                     eprintln!("user disconnected?");
                     let mut reg = self.registry.lock().await;
                     reg.remove_user(user_id);
                     break;
-                },
+                }
             }
         }
     }

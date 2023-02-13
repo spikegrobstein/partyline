@@ -1,13 +1,7 @@
 use nom::{
-    IResult,
-    branch::alt,
-    bytes::complete::tag,
-    character::complete::alphanumeric1,
-    character::complete::multispace1,
-    character::complete::newline,
-    multi::many0,
-    multi::separated_list0,
-    combinator::opt,
+    branch::alt, bytes::complete::tag, character::complete::alphanumeric1,
+    character::complete::multispace1, character::complete::newline, combinator::opt, multi::many0,
+    multi::separated_list0, IResult,
 };
 
 use crate::command::{Command, Modifier};
@@ -40,9 +34,7 @@ fn parse_cmd(input: &str) -> IResult<&str, String> {
 fn parse_args(input: &str) -> IResult<&str, Vec<String>> {
     let (input, mut args) = separated_list0(multispace1, alphanumeric1)(input)?;
 
-    let args = args.iter_mut()
-        .map(|a| a.to_owned())
-        .collect();
+    let args = args.iter_mut().map(|a| a.to_owned()).collect();
 
     Ok((input, args))
 }
@@ -58,12 +50,14 @@ pub fn parse_command(input: &str) -> IResult<&str, Command> {
     // ignore newlines
     let (input, _) = many0(newline)(input)?;
 
-
-    Ok((input, Command {
-        modifier,
-        command,
-        args,
-    }))
+    Ok((
+        input,
+        Command {
+            modifier,
+            command,
+            args,
+        },
+    ))
 }
 
 #[cfg(test)]
@@ -84,47 +78,56 @@ mod tests {
         let (input, command) = parse_command("echo this is really cool").unwrap();
         assert_eq!(input, "");
 
-        assert_eq!(command, Command {
-            modifier: Modifier::None,
-            command: "echo".to_owned(),
-            args: vec![
-                "this".to_owned(),
-                "is".to_owned(),
-                "really".to_owned(),
-                "cool".to_owned(),
-            ]
-        })
+        assert_eq!(
+            command,
+            Command {
+                modifier: Modifier::None,
+                command: "echo".to_owned(),
+                args: vec![
+                    "this".to_owned(),
+                    "is".to_owned(),
+                    "really".to_owned(),
+                    "cool".to_owned(),
+                ]
+            }
+        )
     }
 
     #[test]
     fn it_parses_slash_command() {
         let (_input, command) = parse_command("/echo this is really cool").unwrap();
 
-        assert_eq!(command, Command {
-            modifier: Modifier::Slash,
-            command: "echo".to_owned(),
-            args: vec![
-                "this".to_owned(),
-                "is".to_owned(),
-                "really".to_owned(),
-                "cool".to_owned(),
-            ]
-        })
+        assert_eq!(
+            command,
+            Command {
+                modifier: Modifier::Slash,
+                command: "echo".to_owned(),
+                args: vec![
+                    "this".to_owned(),
+                    "is".to_owned(),
+                    "really".to_owned(),
+                    "cool".to_owned(),
+                ]
+            }
+        )
     }
 
     #[test]
     fn it_parses_bracket_command() {
         let (_input, command) = parse_command(">echo this is really cool").unwrap();
 
-        assert_eq!(command, Command {
-            modifier: Modifier::Bracket,
-            command: "echo".to_owned(),
-            args: vec![
-                "this".to_owned(),
-                "is".to_owned(),
-                "really".to_owned(),
-                "cool".to_owned(),
-            ]
-        })
+        assert_eq!(
+            command,
+            Command {
+                modifier: Modifier::Bracket,
+                command: "echo".to_owned(),
+                args: vec![
+                    "this".to_owned(),
+                    "is".to_owned(),
+                    "really".to_owned(),
+                    "cool".to_owned(),
+                ]
+            }
+        )
     }
 }
