@@ -1,4 +1,5 @@
 use std::io;
+use std::sync::Arc;
 
 mod parser;
 mod command;
@@ -8,7 +9,7 @@ use crate::server::Server;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    Server::new()
+    Arc::new(Server::new())
         .listen()
         .await
 }
