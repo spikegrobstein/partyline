@@ -158,14 +158,12 @@ impl Server {
                             "no news.".to_owned()
                         },
                         "who" => {
-                            {
-                                let users = self.registry.lock().await;
+                            let users = self.registry.lock().await;
 
-                                let user = users.get_user(user_id).unwrap();
+                            let user = users.get_user(user_id).unwrap();
 
-                                let count = users.users.len();
-                                format!("You are {}.\nthere are {} users online, including you.", user.name, count)
-                            }
+                            let count = users.users.len();
+                            format!("You are {}.\nthere are {} users online, including you.", user.name, count)
                         },
                         "name" => {
                             if let Some(new_name) = cmd.args.get(0) {
@@ -188,10 +186,8 @@ impl Server {
                 },
                 None => {
                     eprintln!("user disconnected?");
-                    {
-                        let mut reg = self.registry.lock().await;
-                        reg.remove_user(user_id);
-                    }
+                    let mut reg = self.registry.lock().await;
+                    reg.remove_user(user_id);
                     break;
                 },
             }
